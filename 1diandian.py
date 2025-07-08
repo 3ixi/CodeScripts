@@ -6,12 +6,15 @@
 创建时间：2025/07/07
 ！！此脚本需要配合iPad协议服务使用！！
 小程序：1点点alittleTea+
+---------------
+更新时间：2025/07/08（修复是否签到的判断逻辑，但是还需要修复签到积分获取逻辑，9号修复）
 """
 
 import time
 import hashlib
 from collections import OrderedDict
 from typing import Optional, Tuple
+from datetime import datetime
 
 try:
     import httpx
@@ -179,13 +182,13 @@ class YidiandianSignin:
     def check_signin_status(self, token: str, openid: str) -> Optional[int]:
         """
         检查今日签到状态
-        
+
         Args:
             token (str): 用户token
             openid (str): 微信openid
-            
+
         Returns:
-            Optional[int]: sign_d值，0表示未签到，1表示已签到，None表示请求失败
+            Optional[int]: 0表示未签到，1表示已签到，None表示请求失败
         """
         params = {
             "method": "crm.activity.sign.in.config",
@@ -195,25 +198,36 @@ class YidiandianSignin:
             "sign_type": "MD5",
             "version": "1.0.0"
         }
-        
+
         sign = self.generate_sign(params)
         params["sign"] = sign
-        
+
         url = f"{self.base_url}/open"
-        
+
         try:
             response = self.client.get(url, params=params, headers=self.headers)
             response.raise_for_status()
-            
+
             data = response.json()
             if data.get("errCode") == 10000:
                 result_data = data.get("data", {})
-                sign_d = result_data.get("sign_d")
-                return sign_d
+
+                today = datetime.now().strftime("%Y%m%d")
+
+                sign_list = result_data.get("list", [])
+
+                for day_info in sign_list:
+                    if day_info.get("day") == today:
+                        is_sign = day_info.get("is_sgin", 0)
+                        print(f"今日签到状态: {'已签到' if is_sign == 1 else '未签到'}")
+                        return is_sign
+
+                print("未找到今日签到记录，默认为未签到")
+                return 0
             else:
                 print(f"检查签到状态失败：{data.get('errMsg', '未知错误')}")
                 return None
-                
+
         except Exception as e:
             print(f"检查签到状态请求失败: {e}")
             return None
