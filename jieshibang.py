@@ -43,7 +43,7 @@ class JieshibangSignin:
             "accept-language": "zh-CN,zh;q=0.9"
         }
         self.headers = self.base_headers.copy()
-        self.client = httpx.Client(http2=True)
+        self.client = httpx.Client(http2=True, verify=False)
     
     def get_timestamp(self) -> int:
         """获取13位时间戳"""
@@ -627,7 +627,7 @@ class JieshibangSignin:
     def reset_client(self):
         """重置HTTP客户端，创建新的连接"""
         self.client.close()
-        self.client = httpx.Client(http2=True)
+        self.client = httpx.Client(http2=True, verify=False)
 
 
 def main():
