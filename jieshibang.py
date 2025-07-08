@@ -6,12 +6,15 @@
 创建时间：2025/07/07
 ！！此脚本需要配合iPad协议服务使用！！
 小程序：杰士邦会员中心
+---------------
+更新时间：2025/07/08（新增阅读签到活动，但是活动获取有点问题，9号修复）
 """
 
 import json
 import time
 import re
-from typing import Dict, Optional, Any, Tuple, Union
+from datetime import datetime
+from typing import Dict, Optional
 
 try:
     import httpx
@@ -362,6 +365,174 @@ class JieshibangSignin:
 
         return False
 
+    def get_activity_list(self, mob: str) -> Optional[str]:
+        """获取活动列表，查找包含"签到"的活动"""
+        timestamp = self.get_timestamp()
+        url = f"{self.base_url}/jfmb/cloud/activity/activity/activityList"
+        params = {
+            "sideType": "3",
+            "mob": mob,
+            "appId": self.app_id,
+            "shopNick": self.app_id,
+            "timestamp": timestamp
+        }
+
+        payload = {
+            "appId": self.app_id,
+            "openId": True,
+            "shopNick": "",
+            "timestamp": timestamp,
+            "interfaceSource": 0,
+            "pageNumber": 1,
+            "pageSize": 20,
+            "decoActStatus": ["1"]
+        }
+
+        payload_str = json.dumps(payload, separators=(',', ':'))
+        self.headers["content-length"] = str(len(payload_str.encode('utf-8')))
+
+        try:
+            response = self.client.post(url, params=params, json=payload, headers=self.headers)
+            response.raise_for_status()
+
+            data = response.json()
+            if data.get("success") and data.get("data", {}).get("success"):
+                data_list = data["data"]["data"].get("dataList", [])
+                for activity in data_list:
+                    name = activity.get("name", "")
+                    if "签到" in name:
+                        activity_id = str(activity.get("id", ""))
+                        print(f"获取到{name}")
+                        return activity_id
+
+        except Exception as e:
+            print(f"获取活动列表失败: {e}")
+
+        return None
+
+    def get_sign_prize(self, mob: str, activity_id: str) -> Optional[str]:
+        """获取签到活动奖励详情"""
+        timestamp = self.get_timestamp()
+        url = f"{self.base_url}/jfmb/cloud/activity/sign/getSignPrize"
+        params = {
+            "sideType": "3",
+            "mob": mob,
+            "appId": self.app_id,
+            "shopNick": self.app_id,
+            "timestamp": timestamp
+        }
+
+        payload = {
+            "appId": self.app_id,
+            "openId": True,
+            "shopNick": "",
+            "timestamp": timestamp,
+            "interfaceSource": 0,
+            "activityId": activity_id
+        }
+
+        payload_str = json.dumps(payload, separators=(',', ':'))
+        self.headers["content-length"] = str(len(payload_str.encode('utf-8')))
+
+        try:
+            response = self.client.post(url, params=params, json=payload, headers=self.headers)
+            response.raise_for_status()
+
+            data = response.json()
+            if data.get("success"):
+                response_list = data.get("data", {}).get("responseList", [])
+                if response_list:
+                    prize_name = response_list[0].get("prizeName", "未知奖品")
+                    return prize_name
+
+        except Exception as e:
+            print(f"获取签到奖励详情失败: {e}")
+
+        return None
+
+    def add_sign_new(self, mob: str, activity_id: str) -> Optional[Dict]:
+        """提交签到活动"""
+        timestamp = self.get_timestamp()
+        url = f"{self.base_url}/jfmb/api/play-default/sign/add-sign-new.do"
+        params = {
+            "sideType": "3",
+            "mob": mob,
+            "appId": self.app_id,
+            "shopNick": self.app_id,
+            "timestamp": timestamp
+        }
+
+        payload = {
+            "appId": self.app_id,
+            "openId": True,
+            "shopNick": "",
+            "timestamp": timestamp,
+            "interfaceSource": 0,
+            "activityId": activity_id
+        }
+
+        payload_str = json.dumps(payload, separators=(',', ':'))
+        self.headers["content-length"] = str(len(payload_str.encode('utf-8')))
+
+        try:
+            response = self.client.post(url, params=params, json=payload, headers=self.headers)
+            response.raise_for_status()
+
+            data = response.json()
+            if data.get("success"):
+                result_data = data.get("data", {})
+                integral = result_data.get("integral", 0)
+                integral_alias = result_data.get("integralAlias", "积分")
+                return {"integral": integral, "integralAlias": integral_alias}
+
+        except Exception as e:
+            print(f"提交签到活动失败: {e}")
+
+        return None
+
+    def get_continuous_sign_days(self, mob: str, activity_id: str) -> Optional[int]:
+        """获取连续签到天数"""
+        timestamp = self.get_timestamp()
+        url = f"{self.base_url}/jfmb/api/play-default/sign/current-month-signdays-new.do"
+        params = {
+            "sideType": "3",
+            "mob": mob,
+            "appId": self.app_id,
+            "shopNick": self.app_id,
+            "timestamp": timestamp
+        }
+
+        # 获取当前年月，格式为 YYYY-MM
+        current_time = datetime.now().strftime("%Y-%m")
+
+        payload = {
+            "appId": self.app_id,
+            "openId": True,
+            "shopNick": "",
+            "timestamp": timestamp,
+            "interfaceSource": 0,
+            "activityId": activity_id,
+            "time": current_time
+        }
+
+        payload_str = json.dumps(payload, separators=(',', ':'))
+        self.headers["content-length"] = str(len(payload_str.encode('utf-8')))
+
+        try:
+            response = self.client.post(url, params=params, json=payload, headers=self.headers)
+            response.raise_for_status()
+
+            data = response.json()
+            if data.get("success"):
+                result_data = data.get("data", {})
+                continuous_sign_day = result_data.get("continuousSignDay", 0)
+                return continuous_sign_day
+
+        except Exception as e:
+            print(f"获取连续签到天数失败: {e}")
+
+        return None
+
     def process_account(self, nick_name: str, wx_info: str, license: Optional[str] = None) -> bool:
         """处理单个账号的签到和抽奖"""
         print(f"\n开始处理账号: {nick_name}")
@@ -397,12 +568,42 @@ class JieshibangSignin:
 
         print(f"{client_name}登录成功，当前积分{residual_integral}")
 
+        # 第一个签到活动
+        print("\n--- 每日签到 ---")
         signin_id = self.get_signin_activity_id(user_mob)
         if signin_id:
             self.signin(user_mob, signin_id)
         else:
             print("获取签到活动ID失败")
 
+        # 第二个签到活动流程
+        print("\n--- 签到活动 ---")
+        try:
+            activity_id = self.get_activity_list(user_mob)
+            if activity_id:
+                # 获取签到奖励详情
+                prize_name = self.get_sign_prize(user_mob, activity_id)
+                if prize_name:
+                    print(f"签到奖励：{prize_name}")
+
+                # 提交签到
+                sign_result = self.add_sign_new(user_mob, activity_id)
+                if sign_result:
+                    integral = sign_result.get("integral", 0)
+                    integral_alias = sign_result.get("integralAlias", "积分")
+                    print(f"签到成功，获得{integral}{integral_alias}")
+
+                    # 获取连续签到天数
+                    continuous_days = self.get_continuous_sign_days(user_mob, activity_id)
+                    if continuous_days is not None:
+                        print(f"已连续签到{continuous_days}天")
+                else:
+                    print("签到活动提交失败")
+        except Exception as e:
+            print(f"签到活动处理失败，跳过: {e}")
+
+        # 抽奖活动
+        print("\n--- 抽奖活动 ---")
         lottery_id, lottery_name = self.get_lottery_activity_id(user_mob)
         if lottery_id:
             lottery_times = self.get_lottery_times(user_mob, lottery_id)

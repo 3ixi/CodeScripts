@@ -43,30 +43,84 @@ class WeChatCodeGetter:
             return False
     
     def get_auth_keys(self) -> List[Dict]:
-        """获取授权码列表"""
+        """获取授权码列表（iwechat）"""
         url = f"{self.wechat_server}/admin/GetAuthKey"
         params = {"key": self.admin_key}
-        
+
         try:
             response = requests.get(url, params=params, timeout=10)
             response.raise_for_status()
-            
+
             auth_data = response.json()
             if not isinstance(auth_data, list):
                 raise ValueError("获取授权码响应格式错误")
-            
+
             valid_accounts = []
             for account in auth_data:
                 if self._is_license_valid(account.get('expiry_date', '')):
                     valid_accounts.append(account)
-            
+
             return valid_accounts
-            
+
+        except requests.HTTPError as e:
+            if e.response.status_code == 404:
+                print("检测到协议服务不支持GetAuthKey接口，切换到GetAllDevices接口...")
+                return self._get_devices_auth_keys()
+            else:
+                raise Exception(f"获取授权码失败: {e}")
         except requests.RequestException as e:
             raise Exception(f"获取授权码失败: {e}")
         except json.JSONDecodeError:
             raise Exception("授权码响应数据格式错误")
-    
+
+    def _get_devices_auth_keys(self) -> List[Dict]:
+        """获取授权码列表（WeChatPadPro）"""
+        url = f"{self.wechat_server}/admin/GetAllDevices"
+        params = {"key": self.admin_key}
+
+        try:
+            response = requests.get(url, params=params, timeout=10)
+            response.raise_for_status()
+
+            devices_data = response.json()
+
+            if isinstance(devices_data, dict) and 'Data' in devices_data:
+                data_section = devices_data['Data']
+                if 'devices' in data_section:
+                    auth_data = data_section['devices']
+                else:
+                    raise ValueError("GetAllDevices响应中Data部分缺少devices字段")
+            elif isinstance(devices_data, list):
+                auth_data = devices_data
+            elif isinstance(devices_data, dict):
+                if 'data' in devices_data:
+                    auth_data = devices_data['data']
+                elif 'devices' in devices_data:
+                    auth_data = devices_data['devices']
+                else:
+                    auth_data = [devices_data]
+            else:
+                raise ValueError("GetAllDevices响应格式错误")
+
+            if not isinstance(auth_data, list):
+                raise ValueError("GetAllDevices响应格式错误")
+
+            valid_accounts = []
+            for account in auth_data:
+                expiry_date = account.get('expireTime',
+                                        account.get('expiry_date',
+                                                  account.get('expire_date', '')))
+                if not expiry_date or self._is_license_valid(expiry_date):
+                    valid_accounts.append(account)
+
+            print(f"通过GetAllDevices接口获取到{len(valid_accounts)}个有效账号")
+            return valid_accounts
+
+        except requests.RequestException as e:
+            raise Exception(f"通过GetAllDevices获取授权码失败: {e}")
+        except json.JSONDecodeError:
+            raise Exception("GetAllDevices响应数据格式错误")
+
     def get_login_status(self, license: str) -> Dict:
         """获取登录状态"""
         url = f"{self.wechat_server}/login/GetLoginStatus"
@@ -91,29 +145,30 @@ class WeChatCodeGetter:
         """获取在线账号列表"""
         accounts = self.get_auth_keys()
         online_accounts = []
-        
+
         for account in accounts:
-            license = account.get('license')
+            license = account.get('license') or account.get('authKey')
             if not license:
                 continue
-                
+
             try:
                 login_status = self.get_login_status(license)
                 if login_status.get('loginState') == 1:
                     online_accounts.append((account, login_status))
             except Exception as e:
-                print(f"检查账号 {account.get('nick_name', '未知')} 登录状态失败: {e}")
+                nick_name = account.get('nick_name') or account.get('deviceName') or '未知'
+                print(f"检查账号 {nick_name} 登录状态失败: {e}")
                 continue
-        
+
         return online_accounts
     
     def print_online_status(self):
         """打印在线账号状态"""
         online_accounts = self.get_online_accounts()
-        
+
         print(f"当前有{len(online_accounts)}个账号在线")
         for account, status in online_accounts:
-            nick_name = account.get('nick_name', '未知昵称')
+            nick_name = account.get('nick_name') or account.get('deviceName') or '未知昵称'
             online_time = status.get('onlineTime', '未知在线时间')
             print(f"{nick_name} {online_time}")
     
@@ -153,11 +208,30 @@ class WeChatCodeGetter:
         """为所有在线账号获取小程序Code"""
         online_accounts = self.get_online_accounts()
         codes = {}
-        
-        for account, _ in online_accounts:
-            license = account.get('license')
-            nick_name = account.get('nick_name', '未知昵称')
-            
+
+        for i, (account, _) in enumerate(online_accounts, 1):
+            license = account.get('license') or account.get('authKey')
+            base_nick_name = account.get('nick_name') or account.get('deviceName') or '未知昵称'
+
+            device_id = account.get('deviceId', '')
+            if not base_nick_name.strip() or base_nick_name.strip() == 'ㅤ':
+                if device_id:
+                    nick_name = f"设备_{device_id[-6:]}"
+                else:
+                    nick_name = f"账号_{i}"
+            else:
+                nick_name = base_nick_name
+
+            original_nick_name = nick_name
+            counter = 1
+            while nick_name in codes:
+                nick_name = f"{original_nick_name}_{counter}"
+                counter += 1
+
+            if not license:
+                print(f"账号 {nick_name} 缺少license/authKey，跳过")
+                continue
+
             try:
                 code = self.get_applet_code(app_id, license)
                 codes[nick_name] = code
@@ -165,7 +239,7 @@ class WeChatCodeGetter:
             except Exception as e:
                 print(f"获取 {nick_name} 的Code失败: {e}")
                 continue
-        
+
         return codes
 
 
