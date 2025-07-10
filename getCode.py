@@ -5,17 +5,20 @@
 用于通过微信iPad协议接口获取小程序登录Code值
 模块作者：3iXi
 创建时间：2025/07/04
+修改时间：2025/07/09
 ！！需要先搭建WeChatPadPro或iwechat才能使用此模块！！
 环境变量：
     WECHAT_SERVER: 协议服务IP地址和端口
     ADMIN_KEY: 与搭建时设置的ADMIN_KEY一致
+    WX_ID: 可选，指定要获取Code的微信账号ID，多个用&分隔
+           对应iwechat接口的wx_id字段或WeChatPadPro接口的deviceId字段
+           如果不设置则获取所有有效账号的Code
 """
 
 import os
 import requests
 import json
-from datetime import datetime
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Tuple
 
 
 class WeChatCodeGetter:
@@ -25,22 +28,45 @@ class WeChatCodeGetter:
         """初始化，获取环境变量"""
         self.wechat_server = os.getenv('WECHAT_SERVER')
         self.admin_key = os.getenv('ADMIN_KEY')
-        
+        self.wx_id_filter = os.getenv('WX_ID')  # 新增：WX_ID环境变量
+
         if not self.wechat_server:
             raise ValueError("环境变量 WECHAT_SERVER 未设置")
         if not self.admin_key:
             raise ValueError("环境变量 ADMIN_KEY 未设置")
-            
+
         if not self.wechat_server.startswith('http'):
             self.wechat_server = f"http://{self.wechat_server}"
+
+        # 解析WX_ID环境变量
+        self.target_wx_ids = []
+        if self.wx_id_filter:
+            self.target_wx_ids = [wx_id.strip() for wx_id in self.wx_id_filter.split('&') if wx_id.strip()]
+            print(f"检测到WX_ID环境变量，将筛选指定账号: {', '.join(self.target_wx_ids)}")
     
-    def _is_license_valid(self, expiry_date: str) -> bool:
-        """检查授权码是否过期"""
-        try:
-            expiry = datetime.strptime(expiry_date, "%Y-%m-%d")
-            return expiry.date() >= datetime.now().date()
-        except ValueError:
-            return False
+    def _is_account_valid(self, account: Dict) -> bool:
+        """检查账号是否有效（基于status字段）"""
+        status = account.get('status', 0)
+        return status == 1
+
+    def _filter_accounts_by_wx_id(self, accounts: List[Dict]) -> List[Dict]:
+        """根据WX_ID环境变量筛选账号"""
+        if not self.target_wx_ids:
+            return accounts
+
+        filtered_accounts = []
+        for account in accounts:
+            # 获取微信ID，支持两种接口的不同字段名
+            wx_id = account.get('wx_id') or account.get('deviceId', '')
+            if wx_id in self.target_wx_ids:
+                filtered_accounts.append(account)
+
+        if filtered_accounts:
+            print(f"根据WX_ID筛选后获得{len(filtered_accounts)}个账号")
+        else:
+            print(f"警告：根据WX_ID筛选后没有找到匹配的账号")
+
+        return filtered_accounts
     
     def get_auth_keys(self) -> List[Dict]:
         """获取授权码列表（iwechat）"""
@@ -55,12 +81,15 @@ class WeChatCodeGetter:
             if not isinstance(auth_data, list):
                 raise ValueError("获取授权码响应格式错误")
 
+            # 只获取status=1的有效账号
             valid_accounts = []
             for account in auth_data:
-                if self._is_license_valid(account.get('expiry_date', '')):
+                if self._is_account_valid(account):
                     valid_accounts.append(account)
 
-            return valid_accounts
+            # 根据WX_ID环境变量筛选账号
+            filtered_accounts = self._filter_accounts_by_wx_id(valid_accounts)
+            return filtered_accounts
 
         except requests.HTTPError as e:
             if e.response.status_code == 404:
@@ -105,16 +134,17 @@ class WeChatCodeGetter:
             if not isinstance(auth_data, list):
                 raise ValueError("GetAllDevices响应格式错误")
 
+            # 只获取status=1的有效账号
             valid_accounts = []
             for account in auth_data:
-                expiry_date = account.get('expireTime',
-                                        account.get('expiry_date',
-                                                  account.get('expire_date', '')))
-                if not expiry_date or self._is_license_valid(expiry_date):
+                if self._is_account_valid(account):
                     valid_accounts.append(account)
 
             print(f"通过GetAllDevices接口获取到{len(valid_accounts)}个有效账号")
-            return valid_accounts
+
+            # 根据WX_ID环境变量筛选账号
+            filtered_accounts = self._filter_accounts_by_wx_id(valid_accounts)
+            return filtered_accounts
 
         except requests.RequestException as e:
             raise Exception(f"通过GetAllDevices获取授权码失败: {e}")
@@ -238,6 +268,7 @@ class WeChatCodeGetter:
                 print(f"获取 {nick_name} 的Code成功: {code}")
             except Exception as e:
                 print(f"获取 {nick_name} 的Code失败: {e}")
+                print(f"提示：如果持续获取失败，账号 {nick_name} 可能需要重新登录")
                 continue
 
         return codes
@@ -270,17 +301,21 @@ def print_online_status():
 def get_single_code(app_id: str, license: str) -> str:
     """
     为指定授权码获取小程序登录Code
-    
+
     Args:
         app_id (str): 小程序AppId
         license (str): 微信账号授权码
-        
+
     Returns:
         str: 小程序登录Code
-        
+
     Raises:
         ValueError: 环境变量未设置
         Exception: 网络请求或数据处理错误
     """
     getter = WeChatCodeGetter()
-    return getter.get_applet_code(app_id, license)
+    try:
+        return getter.get_applet_code(app_id, license)
+    except Exception as e:
+        print(f"提示：如果持续获取失败，该账号可能需要重新登录")
+        raise e
