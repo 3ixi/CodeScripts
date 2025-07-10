@@ -6,10 +6,13 @@
    支持以下微信iPad协议服务实现：
    - [WeChatPadPro](https://github.com/WeChatPadPro/WeChatPadPro)
    - [iwechat](https://github.com/iwechatcom/iwechat)  
-   兼容同样接口的协议服务，只要确保接口一致即可：  
-   - **管理** `/admin/GetAuthKey` 获取授权码列表
-   - **登录** `/login/GetLoginStatus` 获取在线状态
-   - **公众号/小程序** `/applet/JsLogin` 授权小程序(返回授权后的code)
+   兼容同样接口的协议服务，只要确保接口一致即可：
+
+   | 功能类型 | 接口路径 | 接口说明 |
+   |----------|----------|----------|
+   | 管理 | `/admin/GetAuthKey` 或 `/admin/GetAllDevices` | 获取授权码列表 |
+   | 登录 | `/login/GetLoginStatus` | 获取在线状态 |
+   | 公众号/小程序 | `/applet/JsLogin` | 授权小程序(返回授权后的code) |
 
 2. **环境配置**
    搭建教程请自行参考对应仓库内搭建教程，这里不提供。
