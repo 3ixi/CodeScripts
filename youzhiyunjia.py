@@ -6,6 +6,9 @@
 创建时间：2025/07/10
 ！！此脚本需要配合iPad协议服务使用！！
 小程序：优智云家品牌商城
+--------------------
+更新时间：2025/07/18
+更新内容：新增使用brotli依赖用于解压响应数据
 """
 
 import time
@@ -16,6 +19,12 @@ try:
     import httpx
 except ImportError:
     print("错误: 需要安装 httpx[http2] 依赖")
+    exit(1)
+
+try:
+    import brotli
+except ImportError:
+    print("错误: 需要安装 brotli 依赖")
     exit(1)
 
 import getCode
