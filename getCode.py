@@ -74,7 +74,7 @@ class WeChatCodeGetter:
         params = {"key": self.admin_key}
 
         try:
-            response = requests.get(url, params=params, timeout=10)
+            response = requests.get(url, params=params, timeout=60)
             response.raise_for_status()
 
             auth_data = response.json()
@@ -108,7 +108,7 @@ class WeChatCodeGetter:
         params = {"key": self.admin_key}
 
         try:
-            response = requests.get(url, params=params, timeout=10)
+            response = requests.get(url, params=params, timeout=60)
             response.raise_for_status()
 
             devices_data = response.json()
@@ -157,7 +157,7 @@ class WeChatCodeGetter:
         params = {"key": license}
         
         try:
-            response = requests.get(url, params=params, timeout=10)
+            response = requests.get(url, params=params, timeout=60)
             response.raise_for_status()
             
             status_data = response.json()
@@ -215,7 +215,7 @@ class WeChatCodeGetter:
         }
         
         try:
-            response = requests.post(url, params=params, json=payload, timeout=10)
+            response = requests.post(url, params=params, json=payload, timeout=60)
             response.raise_for_status()
             
             result = response.json()
