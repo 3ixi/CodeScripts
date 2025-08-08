@@ -20,7 +20,7 @@
    搭建完成后需要：
    - 登录微信账号
    - 创建环境变量：
-     - `WECHAT_SERVER`：协议服务IP地址和端口【如 `192.168.110.100:1238`，http://前缀可加可不加，程序会自己判断】  
+     - `WECHAT_SERVER`：协议服务IP地址和端口【如 `192.168.110.100:1238`，`http://`前缀可加可不加，程序会自己判断】  
      - `ADMIN_KEY`：与搭建时设置的ADMIN_KEY一致（**仅WeChatPadPro或iwechat需要**，牛子协议不需要）  
      - `WX_ID`：**可选**，指定要获取Code的微信号（未设置微信号的话就是wxid_开头的微信号），多个用&分隔  
        - 对应iwechat接口的wx_id字段或WeChatPadPro接口的deviceId字段
