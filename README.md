@@ -4,11 +4,11 @@
 
 1. **兼容的协议服务**  
    支持以下微信iPad协议服务实现：
-   - [WeChatPadPro](https://github.com/WeChatPadPro/WeChatPadPro)
-   - [iwechat](https://github.com/iwechatcom/iwechat)
-   - [牛子协议](https://github.com/wyourname/wool/tree/master/wechat)  
+   - [WeChatPadPro](https://github.com/WeChatPadPro/WeChatPadPro)【**不推荐使用**，接口响应很慢，各种无法解决的故障】
+   - [iwechat](https://github.com/iwechatcom/iwechat)【仅可登录**2个**微信账号】
+   - [牛子协议](https://github.com/wyourname/wool/tree/master/wechat)【需要**付费**使用】  
+     
    兼容同样接口的协议服务，只要**确保接口一致**即可：
-
    | 功能类型 | 接口路径 | 接口说明 |
    |----------|----------|----------|
    | 管理 | `/admin/GetAuthKey`、`/admin/GetAllDevices`、`/api/v1/wx/user/status` | 获取授权码列表 |

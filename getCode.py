@@ -58,7 +58,14 @@ class WeChatCodeGetter:
                     if 'protocol_type' in data:
                         self.protocol_type = data['protocol_type']
                         print(f"从配置文件读取到协议服务类型: {self.protocol_type}")
-                        return
+                        if self.protocol_type == "Unknown":
+                            try:
+                                self.env_check_file.unlink()
+                                print("配置文件中标记为 Unknown，将重新检测协议服务类型")
+                            except Exception as e:
+                                print(f"无法删除配置文件 env_check.json: {e}")
+                        else:
+                            return
             except Exception as e:
                 print(f"读取配置文件失败: {e}")
         
