@@ -92,7 +92,7 @@ class LsymSignin:
         
         try:
             json_payload = json.dumps(payload, separators=(',', ':'))
-                
+
             headers = self.headers.copy()
             headers["Content-Length"] = str(len(json_payload))
     
@@ -425,6 +425,32 @@ class LsymSignin:
             print(f"查询抽奖次数请求失败: {e}")
             return None
 
+    def ensure_store_id(self) -> bool:
+        """
+        确保门店ID已设置，如未设置则从会员信息中获取
+        
+        Returns:
+            bool: 是否成功获取门店ID
+        """
+        if self.store_id:
+            return True
+            
+        member_info = self.get_member_info()
+        if not member_info:
+            print("获取会员信息失败，无法获取门店ID")
+            return False
+            
+        register_store_id = member_info.get("registerStoreId")
+        register_store_name = member_info.get("registerStoreName", "")
+        
+        if not register_store_id:
+            print("会员信息中未找到注册门店ID")
+            return False
+            
+        self.store_id = register_store_id
+        print(f"获取到注册门店信息：{register_store_name}({register_store_id})")
+        return True
+
     def draw_lottery(self, activity_id: str) -> Optional[Dict]:
         """
         抽奖
@@ -435,6 +461,10 @@ class LsymSignin:
         Returns:
             Optional[Dict]: 抽奖结果，None表示抽奖失败
         """
+        if not self.ensure_store_id():
+            print("门店ID获取失败，无法进行抽奖")
+            return None
+        
         url = f"{self.base_url}/scrm/marketing/front/activity/lottery-wheel/prize-draw"
         payload = {
             "activityId": activity_id,
@@ -446,6 +476,7 @@ class LsymSignin:
                 
             headers = self.headers.copy()
             headers["Content-Length"] = str(len(json_payload))
+            headers["storeid"] = self.store_id
     
             response = self.client.post(url, content=json_payload, headers=headers)
             response.raise_for_status()
@@ -687,6 +718,7 @@ class LsymSignin:
         self.access_token = None
         self.member_id = None
         self.headers["authorization"] = ""
+        self.store_id = STORE_ID
 
         print("已清理会话数据，准备下一个账号...")
 
