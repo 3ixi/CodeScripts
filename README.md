@@ -30,12 +30,15 @@
 
 ## 模块说明
 
-`getCode.py` 是获取Code核心模块（对应微信接口wx.login），用于通过微信iPad协议接口获取小程序登录Code值。所有自动化脚本都依赖此模块。
+`getCode.py` 是获取Code核心模块（对应微信接口wx.login），用于通过微信iPad协议接口获取小程序登录Code值。所有自动化脚本都依赖此模块。  
+`cloud_auth.py` 是云函数FaaS平台的认证模块，用于和3iXi云函数服务器交换数据。[项目首页](https://github.com/3ixi/CloudScripts) | [授权码获取](https://cloud.3ixi.top/)  
+`SendNotify.py` 是通知模块，用于调用青龙自带的通知模块发送通知推送。[项目首页](https://github.com/3ixi/CloudScripts)  
 
 ## 自动化脚本列表
 
 | 脚本名 | 可用状态 | 小程序名 | 可获奖励 | 备注 |
 |--------|----------|----------|----------|------|
+| [Token自动更新脚本](./envRefresh.py) | ✅ | / | / |  |
 | [杰士邦签到+抽奖](./jieshibang.py) | ⚠️ | 杰士邦会员中心 | 积分/抽奖实物 |  |
 | [1点点签到](./1diandian.py) | ✅ | 1点点alittleTea+ | 积分 | 自动领优惠券 |
 | [优智云家签到](./youzhiyunjia.py) | ✅ | 优智云家品牌商城 | 积分 | 兑换智能家电 |
@@ -44,7 +47,7 @@
 | [途虎养车签到](./tuhu.py) | ✅ | 途虎养车 | 积分 |  |
 | [SM广场签到](./sm_sign.py) | ✅ | 成都SM广场、SM晋江国际广场、SM扬州、厦门SM商业城、重庆SM城市广场 | 积分 |需要修改脚本设置地区  |
 | [康师傅畅饮社签到](./kangshifu_cys.py) | ✅ | 康师傅畅饮社 | 积分 |  |
-| [零食有鸣自动任务](./lsym.py) | ✅ | 零食有鸣 | 积分/优惠券 |  |
+| [零食有鸣自动任务](./lsym.py) | ⚠️ | 零食有鸣 | 积分/优惠券 |  |
 | [瓜瓜粉丝俱乐部签到](./guaguafans.py) | ✅ | 瓜瓜粉丝俱乐部 | 积分 | #小程序://瓜瓜粉丝俱乐部/elCKovIOnboDMDu |
 
   
@@ -52,3 +55,17 @@
 > - ⚠️ 表示部分功能可用  
 > - ❌ 表示暂时不可用  
 > - 脚本如果提示“获取用户信息失败”等类似提示或直接报错，表示没有注册小程序，需要先用对应微信打开小程序手动登录一次再运行脚本
+
+## envRefresh 自动更新Token脚本
+
+1. 此脚本通过`getCode`模块实现 [本人原创的部分脚本](https://github.com/3ixi/autoscripts) 的Token自动更新。  
+2. 建议每周运行一次此脚本，以实现Token用不过期。  
+3. 部分Token的获取需要借助 [cloud_auth](https://github.com/3ixi/CloudScripts) 实现，请自行提前配置授权码。[授权码获取](https://cloud.3ixi.top/)  
+4. 默认通过`http://127.0.0.1:5700`请求青龙面板（因为是通过青龙本身运行，所以使用本地地址进行请求），如果端口有变化或者本地地址无法连通，可设置环境变量`qinglongURL`来指定青龙面板地址，比如`http://192.1.1.5:5700`  
+5. 目前脚本支持自动更新Token的脚本有：
+
+| 脚本名 | 可用状态 | 是否依赖cloud_auth | 更新时间 | 备注 |
+| ------ | -------- | ------------------ | -------- | ---- |
+| [雀巢会员俱乐部](https://github.com/3ixi/autoscripts/blob/main/quechao.py) | ✅ |   | 2025/09/22 | / |
+| [捷停车](https://github.com/3ixi/autoscripts/blob/main/jietingche.py) | ✅ |   | 2025/09/22 | / |
+| [老板电器](https://github.com/3ixi/CloudScripts/blob/main/laobandianqi.py) | ✅ | ✅ | 2025/09/22 | / |
